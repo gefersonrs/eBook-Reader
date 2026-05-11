@@ -1,0 +1,572 @@
+/* ============================================================
+   Folio – EPUB Reader  |  style.css
+   ============================================================ */
+
+/* ── Theme Variables ── */
+:root, [data-theme="dark"] {
+  --bg:           #0d0b09;
+  --bg2:          #111009;
+  --surface:      #1a1713;
+  --surface2:     #221f1a;
+  --surface3:     #2a261f;
+  --border:       rgba(255,255,255,0.07);
+  --border2:      rgba(255,255,255,0.12);
+  --text:         #e8e4dc;
+  --text-muted:   rgba(232,228,220,0.45);
+  --text-faint:   rgba(232,228,220,0.22);
+  --accent:       #f5a623;
+  --accent-glow:  rgba(245,166,35,0.25);
+  --nav-bg:       rgba(13,11,9,0.88);
+  --card-bg:      #1a1713;
+  --card-hover:   #222019;
+  --epub-bg:      #111111;
+  --epub-text:    #e0dcd4;
+  --hero-grad1:   #1a1713;
+  --hero-grad2:   #0d0b09;
+  --scrollbar:    rgba(255,255,255,0.10);
+  --shadow:       rgba(0,0,0,0.5);
+  --input-bg:     rgba(255,255,255,0.05);
+  --input-border: rgba(255,255,255,0.10);
+  --btn-hover:    rgba(255,255,255,0.08);
+}
+
+[data-theme="dim"] {
+  --bg:           #0f1117;
+  --bg2:          #0b0d13;
+  --surface:      #181c27;
+  --surface2:     #1e2233;
+  --surface3:     #242840;
+  --border:       rgba(140,150,255,0.08);
+  --border2:      rgba(140,150,255,0.15);
+  --text:         #c8cce8;
+  --text-muted:   rgba(200,204,232,0.45);
+  --text-faint:   rgba(200,204,232,0.22);
+  --accent:       #7c8cff;
+  --accent-glow:  rgba(124,140,255,0.25);
+  --nav-bg:       rgba(15,17,23,0.90);
+  --card-bg:      #181c27;
+  --card-hover:   #1e2233;
+  --epub-bg:      #13151e;
+  --epub-text:    #c8cce8;
+  --hero-grad1:   #181c27;
+  --hero-grad2:   #0f1117;
+  --scrollbar:    rgba(124,140,255,0.12);
+  --shadow:       rgba(0,0,10,0.6);
+  --input-bg:     rgba(124,140,255,0.05);
+  --input-border: rgba(124,140,255,0.12);
+  --btn-hover:    rgba(124,140,255,0.08);
+}
+
+[data-theme="paper"] {
+  --bg:           #f7f3ed;
+  --bg2:          #f2ede6;
+  --surface:      #fffdf8;
+  --surface2:     #f0ece4;
+  --surface3:     #e8e3da;
+  --border:       rgba(120,100,70,0.10);
+  --border2:      rgba(120,100,70,0.18);
+  --text:         #2d2416;
+  --text-muted:   rgba(45,36,22,0.50);
+  --text-faint:   rgba(45,36,22,0.28);
+  --accent:       #c17f3a;
+  --accent-glow:  rgba(193,127,58,0.20);
+  --nav-bg:       rgba(247,243,237,0.92);
+  --card-bg:      #fffdf8;
+  --card-hover:   #f5f1ea;
+  --epub-bg:      #fefcf8;
+  --epub-text:    #2d2416;
+  --hero-grad1:   #ede9e2;
+  --hero-grad2:   #f7f3ed;
+  --scrollbar:    rgba(120,100,70,0.15);
+  --shadow:       rgba(80,60,30,0.12);
+  --input-bg:     rgba(120,100,70,0.06);
+  --input-border: rgba(120,100,70,0.12);
+  --btn-hover:    rgba(120,100,70,0.07);
+}
+
+[data-theme="sepia"] {
+  --bg:           #f4ede4;
+  --bg2:          #ede6dc;
+  --surface:      #fdf6ef;
+  --surface2:     #e8ddd2;
+  --surface3:     #ddd1c4;
+  --border:       rgba(100,70,40,0.10);
+  --border2:      rgba(100,70,40,0.20);
+  --text:         #3d2b1f;
+  --text-muted:   rgba(61,43,31,0.50);
+  --text-faint:   rgba(61,43,31,0.28);
+  --accent:       #9e5c1e;
+  --accent-glow:  rgba(158,92,30,0.20);
+  --nav-bg:       rgba(244,237,228,0.92);
+  --card-bg:      #fdf6ef;
+  --card-hover:   #f5ede3;
+  --epub-bg:      #f4ede4;
+  --epub-text:    #3d2b1f;
+  --hero-grad1:   #e8ddd2;
+  --hero-grad2:   #f4ede4;
+  --scrollbar:    rgba(100,70,40,0.15);
+  --shadow:       rgba(60,30,10,0.12);
+  --input-bg:     rgba(100,70,40,0.06);
+  --input-border: rgba(100,70,40,0.12);
+  --btn-hover:    rgba(100,70,40,0.07);
+}
+
+[data-theme="light"] {
+  --bg:           #f9f9f7;
+  --bg2:          #f2f2f0;
+  --surface:      #ffffff;
+  --surface2:     #f0f0ee;
+  --surface3:     #e6e6e4;
+  --border:       rgba(0,0,0,0.07);
+  --border2:      rgba(0,0,0,0.13);
+  --text:         #1a1a1a;
+  --text-muted:   rgba(0,0,0,0.42);
+  --text-faint:   rgba(0,0,0,0.22);
+  --accent:       #2563eb;
+  --accent-glow:  rgba(37,99,235,0.15);
+  --nav-bg:       rgba(249,249,247,0.94);
+  --card-bg:      #ffffff;
+  --card-hover:   #f5f5f3;
+  --epub-bg:      #ffffff;
+  --epub-text:    #1a1a1a;
+  --hero-grad1:   #efefed;
+  --hero-grad2:   #f9f9f7;
+  --scrollbar:    rgba(0,0,0,0.10);
+  --shadow:       rgba(0,0,0,0.08);
+  --input-bg:     rgba(0,0,0,0.04);
+  --input-border: rgba(0,0,0,0.10);
+  --btn-hover:    rgba(0,0,0,0.05);
+}
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 999px; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Glass Nav ── */
+.glass-nav {
+  background: var(--nav-bg) !important;
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border-color: var(--border) !important;
+}
+
+/* ── Themed text helpers ── */
+.t-text    { color: var(--text); }
+.t-muted   { color: var(--text-muted); }
+.t-faint   { color: var(--text-faint); }
+.t-surface { background: var(--surface); }
+.t-surface2{ background: var(--surface2); }
+.t-border  { border-color: var(--border); }
+
+/* ── Library header ── */
+#library-view header {
+  background: var(--nav-bg) !important;
+  border-color: var(--border) !important;
+}
+
+#library-view header span,
+#library-view header p { color: var(--text); }
+
+#search-input {
+  background: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text) !important;
+}
+#search-input::placeholder { color: var(--text-muted); }
+#search-input:focus { border-color: var(--accent) !important; }
+
+#sort-select {
+  background: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text-muted) !important;
+}
+
+/* ── Section labels ── */
+.section-label { color: var(--text-faint); }
+.section-count { color: var(--text-faint); }
+
+/* ── Currently Reading Hero ── */
+.currently-reading-hero {
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--hero-grad1) 0%, var(--hero-grad2) 100%);
+  border: 1px solid var(--border2);
+  padding: 28px;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px var(--shadow);
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.currently-reading-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  filter: blur(60px);
+  pointer-events: none;
+}
+.currently-reading-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 48px var(--shadow);
+}
+.currently-reading-hero .hero-cover {
+  width: 90px;
+  height: 130px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+.currently-reading-hero .hero-cover-placeholder {
+  width: 90px;
+  height: 130px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.hero-title  { color: var(--text); font-size: 1.2rem; font-weight: 700; line-height: 1.3; margin-bottom: 4px; }
+.hero-author { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px; }
+.hero-progress-bar {
+  height: 4px;
+  background: var(--surface3);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+.hero-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.hero-pct { color: var(--text-muted); font-size: 0.75rem; margin-bottom: 16px; }
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+.hero-btn:hover { opacity: 0.9; transform: scale(1.03); }
+
+/* ── Book Card ── */
+.book-card {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.25s ease;
+  border-radius: 12px;
+}
+.book-card:hover { transform: translateY(-5px); }
+
+.book-card .cover-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 2/3;
+  background: var(--surface2);
+  box-shadow: 0 4px 16px var(--shadow);
+  transition: box-shadow 0.25s ease;
+  position: relative;
+}
+.book-card:hover .cover-wrap { box-shadow: 0 12px 36px var(--shadow); }
+
+.book-card .cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.book-card .cover-placeholder {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 16px; text-align: center;
+  background: linear-gradient(135deg, var(--surface2) 0%, var(--surface3) 100%);
+}
+
+.book-card .book-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.45);
+  border-radius: 10px;
+  opacity: 0; transition: opacity 0.2s ease;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.book-card:hover .book-overlay { opacity: 1; }
+
+.book-meta-title  { color: var(--text);       font-size: 0.82rem; font-weight: 500; line-height: 1.35; }
+.book-meta-author { color: var(--text-muted);  font-size: 0.72rem; }
+.book-meta-pct    { color: var(--text-faint);  font-size: 0.7rem; }
+
+.book-card .progress-bar {
+  height: 3px;
+  background: var(--surface3);
+  border-radius: 999px; overflow: hidden; margin-top: 7px;
+}
+.book-card .progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* ── Recent Card ── */
+.recent-card {
+  display: flex; gap: 12px; align-items: center;
+  flex-shrink: 0; width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px; cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.recent-card:hover { transform: translateY(-2px); background: var(--card-hover); }
+.recent-card .mini-cover { width: 44px; height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+
+/* ── Settings Panel ── */
+.settings-panel {
+  background: var(--surface) !important;
+  border: 1px solid var(--border2) !important;
+  backdrop-filter: blur(24px);
+  color: var(--text);
+}
+.settings-panel h3 { color: var(--text-muted); }
+.settings-label { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; display: block; margin-bottom: 8px; }
+.settings-label span { color: var(--text); }
+
+/* ── Theme / Font / Layout Buttons ── */
+.theme-btn, .font-btn, .layout-btn {
+  background: var(--surface2) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+  transition: all 0.15s ease;
+}
+.theme-btn:hover, .font-btn:hover, .layout-btn:hover {
+  background: var(--surface3) !important;
+  color: var(--text) !important;
+}
+.theme-btn.active, .font-btn.active, .layout-btn.active {
+  background: var(--accent-glow) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+/* ── Range Sliders ── */
+.accent-slider {
+  -webkit-appearance: none; appearance: none;
+  height: 4px; background: var(--surface3);
+  border-radius: 999px; outline: none; cursor: pointer; width: 100%;
+}
+.accent-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: transform 0.15s ease;
+}
+.accent-slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+/* ── Nav Buttons (reader) ── */
+.nav-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s ease;
+  backdrop-filter: blur(8px); z-index: 10;
+}
+.nav-btn:hover {
+  background: var(--surface2);
+  color: var(--text); border-color: var(--accent);
+}
+
+/* ── TOC Sidebar ── */
+.toc-sidebar {
+  width: 280px;
+  background: var(--nav-bg) !important;
+  border-color: var(--border) !important;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.toc-sidebar h3 { color: var(--text-muted); }
+
+.toc-item {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 0.8rem; color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer; line-height: 1.4; border: none; background: transparent;
+}
+.toc-item:hover { background: var(--btn-hover); color: var(--text); }
+.toc-item.active { background: var(--accent-glow); color: var(--accent); }
+.toc-item.level-2 { padding-left: 24px; font-size: 0.75rem; }
+.toc-item.level-3 { padding-left: 36px; font-size: 0.7rem; }
+
+/* ── Reader View ── */
+#reader-view { background: var(--epub-bg) !important; }
+
+#reader-toolbar {
+  background: var(--nav-bg) !important;
+  border-color: var(--border) !important;
+}
+#reader-toolbar button { color: var(--text-muted); }
+#reader-toolbar button:hover { color: var(--text); background: var(--btn-hover); }
+#reader-title  { color: var(--text); }
+#reader-author { color: var(--text-muted); }
+
+#reader-bottom {
+  background: var(--nav-bg) !important;
+  border-color: var(--border) !important;
+}
+#chapter-label, #progress-label, #location-label { color: var(--text-faint); }
+
+/* ── Action Buttons on Cards ── */
+.btn-delete {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(239,68,68,0.85); color: white;
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.2s;
+}
+.btn-delete:hover { background: rgb(239,68,68); }
+
+.btn-open {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(245,166,35,0.9); color: white;
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.2s;
+}
+.btn-open:hover { background: rgb(245,166,35); }
+
+/* ── Bookmark Item ── */
+.bookmark-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: 8px;
+  background: var(--surface2); cursor: pointer;
+  transition: background 0.15s; gap: 8px;
+  color: var(--text);
+}
+.bookmark-item:hover { background: var(--surface3); }
+.bookmark-item p:first-child  { color: var(--text); }
+.bookmark-item p:last-child   { color: var(--text-faint); }
+
+/* ── Upload Overlay ── */
+#upload-overlay { background: rgba(0,0,0,0.65); }
+
+/* ── Toast ── */
+#toast {
+  background: var(--surface) !important;
+  border-color: var(--border2) !important;
+  color: var(--text) !important;
+}
+
+/* ── Theme Globe Button in Library ── */
+.theme-globe-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s ease;
+}
+.theme-globe-btn:hover { background: var(--btn-hover); color: var(--text); }
+
+/* ── Theme Picker Dropdown ── */
+.theme-picker {
+  background: var(--surface) !important;
+  border: 1px solid var(--border2) !important;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 16px 48px var(--shadow);
+  backdrop-filter: blur(24px);
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+}
+.theme-swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; border-radius: 10px;
+  cursor: pointer; border: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+.theme-swatch:hover { background: var(--btn-hover); }
+.theme-swatch.active { border-color: var(--accent); background: var(--accent-glow); }
+.swatch-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--border2);
+}
+.swatch-label { font-size: 0.62rem; color: var(--text-muted); white-space: nowrap; }
+
+/* ── Drag-over state ── */
+body.drag-over::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: var(--accent-glow);
+  border: 3px dashed var(--accent);
+  z-index: 9999; pointer-events: none;
+}
+
+/* ── Empty State ── */
+#empty-state svg { color: var(--text-faint); }
+#empty-state p:first-of-type { color: var(--text-muted); }
+#empty-state p:last-of-type  { color: var(--text-faint); }
+
+/* ── Animations ── */
+@keyframes fadeIn    { from { opacity:0 } to { opacity:1 } }
+@keyframes slideUp   { from { opacity:0; transform: translateY(16px) translateX(-50%) } to { opacity:1; transform: translateY(0) translateX(-50%) } }
+@keyframes slideDown { from { opacity:0; transform: translateY(-8px) } to { opacity:1; transform: translateY(0) } }
+
+#toast { animation: slideUp 0.3s ease forwards; }
+.settings-panel, .theme-picker { animation: slideDown 0.2s ease forwards; }
+
+/* ── Layout: scroll mode ── */
+#epub-container.layout-scroll { overflow-y: auto; }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .toc-sidebar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    z-index: 30; box-shadow: 4px 0 24px var(--shadow);
+  }
+  .nav-btn { display: none; }
+  .currently-reading-hero { flex-direction: column; }
+  .currently-reading-hero .hero-cover,
+  .currently-reading-hero .hero-cover-placeholder { width: 70px; height: 100px; }
+}

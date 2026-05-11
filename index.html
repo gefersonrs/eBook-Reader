@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Folio – EPUB Reader</title>
+  <meta name="description" content="A modern, elegant EPUB reader for your browser." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:ital,wght@0,300;0,400;1,300&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {
+        animation: {
+          'fade-in':  'fadeIn 0.3s ease forwards',
+          'slide-up': 'slideUp 0.35s ease forwards',
+        },
+        keyframes: {
+          fadeIn:  { '0%': { opacity:'0' }, '100%': { opacity:'1' } },
+          slideUp: { '0%': { opacity:'0', transform:'translateY(14px)' }, '100%': { opacity:'1', transform:'translateY(0)' } },
+        }
+      }}
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="min-h-screen font-sans">
+
+  <!-- ═══════════════════════════════════════════
+       LIBRARY VIEW
+  ════════════════════════════════════════════ -->
+  <div id="library-view" class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 glass-nav border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+
+        <!-- Logo -->
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--accent)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <span class="text-xl font-semibold tracking-tight" style="color:var(--text)">Folio</span>
+        </div>
+
+        <!-- Search -->
+        <div class="flex-1 max-w-md relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style="color:var(--text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input id="search-input" type="text" placeholder="Search books…"
+            class="w-full rounded-xl pl-10 pr-4 py-2 text-sm border focus:outline-none transition-all" />
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2">
+          <select id="sort-select" class="border rounded-xl px-3 py-2 text-sm focus:outline-none transition-all cursor-pointer">
+            <option value="recent">Recent</option>
+            <option value="title">Title A-Z</option>
+            <option value="author">Author</option>
+            <option value="progress">Progress</option>
+          </select>
+
+          <!-- Theme Picker Toggle -->
+          <div class="relative">
+            <button id="lib-theme-btn" class="theme-globe-btn" title="Change Theme">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </button>
+            <!-- Theme Picker -->
+            <div id="lib-theme-picker" class="hidden theme-picker absolute right-0 top-12 z-50 w-64">
+              <button class="theme-swatch" data-theme="dark">
+                <div class="swatch-dot" style="background:#0d0b09"></div>
+                <span class="swatch-label">Dark</span>
+              </button>
+              <button class="theme-swatch" data-theme="dim">
+                <div class="swatch-dot" style="background:#0f1117"></div>
+                <span class="swatch-label">Dim</span>
+              </button>
+              <button class="theme-swatch" data-theme="paper">
+                <div class="swatch-dot" style="background:#f7f3ed; border-color:#d8d0c4"></div>
+                <span class="swatch-label">Paper</span>
+              </button>
+              <button class="theme-swatch" data-theme="sepia">
+                <div class="swatch-dot" style="background:#f4ede4; border-color:#c8b49a"></div>
+                <span class="swatch-label">Sepia</span>
+              </button>
+              <button class="theme-swatch" data-theme="light">
+                <div class="swatch-dot" style="background:#f9f9f7; border-color:#d0d0ce"></div>
+                <span class="swatch-label">Light</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Add Book -->
+          <button id="add-book-btn" class="flex items-center gap-2 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 shadow-lg hover:scale-105"
+            style="background:var(--accent); box-shadow: 0 4px 16px var(--accent-glow)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Book
+          </button>
+          <input id="file-input" type="file" accept=".epub" class="hidden" multiple />
+        </div>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+
+      <!-- Currently Reading Hero -->
+      <section id="currently-reading-section" class="mb-10 hidden">
+        <h2 class="text-xs font-semibold section-label uppercase tracking-widest mb-4">Currently Reading</h2>
+        <div id="currently-reading-hero"></div>
+      </section>
+
+      <!-- Recently Read (horizontal scroll) -->
+      <section id="recent-section" class="mb-10 hidden">
+        <h2 class="text-xs font-semibold section-label uppercase tracking-widest mb-4">Recently Read</h2>
+        <div id="recent-grid" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"></div>
+      </section>
+
+      <!-- Library Grid -->
+      <section>
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xs font-semibold section-label uppercase tracking-widest">My Library</h2>
+          <span id="book-count" class="text-sm section-count"></span>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden flex-col items-center justify-center py-32 text-center">
+          <div class="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style="background:var(--surface2)">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <p class="text-lg font-medium mb-2" style="color:var(--text-muted)">Your library is empty</p>
+          <p class="text-sm mb-6" style="color:var(--text-faint)">Add your first EPUB book to get started</p>
+          <button id="add-book-empty-btn" class="text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+            style="background:var(--accent)">Add Book</button>
+        </div>
+
+        <!-- Books Grid -->
+        <div id="books-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 lg:gap-6"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       READER VIEW
+  ════════════════════════════════════════════ -->
+  <div id="reader-view" class="hidden fixed inset-0 z-50 flex flex-col">
+
+    <!-- Toolbar -->
+    <div id="reader-toolbar" class="h-14 flex items-center justify-between px-4 glass-nav border-b z-30">
+      <div class="flex items-center gap-3">
+        <button id="back-to-library" title="Back" class="p-2 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
+        <div>
+          <p id="reader-title" class="text-sm font-semibold truncate max-w-[180px] sm:max-w-xs"></p>
+          <p id="reader-author" class="text-xs truncate max-w-[180px] sm:max-w-xs"></p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="toc-toggle-btn" title="Table of Contents" class="p-2 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </button>
+        <button id="bookmark-btn" title="Bookmark" class="p-2 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+        </button>
+        <button id="fullscreen-btn" title="Fullscreen" class="p-2 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </button>
+        <button id="settings-btn" title="Reading Settings" class="p-2 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="h-0.5 relative z-20" style="background:var(--surface2)">
+      <div id="progress-bar" class="h-full transition-all duration-300" style="width:0%; background:var(--accent)"></div>
+    </div>
+
+    <!-- Body -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- TOC Sidebar -->
+      <aside id="toc-sidebar" class="toc-sidebar hidden flex-shrink-0 border-r overflow-y-auto z-20">
+        <div class="p-4 border-b" style="border-color:var(--border)">
+          <h3 class="text-xs font-semibold uppercase tracking-widest">Contents</h3>
+        </div>
+        <div id="toc-list" class="p-2"></div>
+      </aside>
+
+      <!-- EPUB Frame -->
+      <div class="flex-1 flex flex-col relative overflow-hidden">
+        <div id="epub-container" class="flex-1 relative"></div>
+
+        <!-- Nav Buttons -->
+        <button id="prev-btn" class="nav-btn left-4" aria-label="Previous">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button id="next-btn" class="nav-btn right-4" aria-label="Next">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div id="reader-bottom" class="h-8 flex items-center justify-between px-6 border-t glass-nav">
+      <span id="chapter-label" class="text-xs"></span>
+      <span id="progress-label" class="text-xs"></span>
+      <span id="location-label" class="text-xs"></span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SETTINGS PANEL
+  ════════════════════════════════════════════ -->
+  <div id="settings-panel" class="hidden fixed top-16 right-4 z-[60] w-80 rounded-2xl settings-panel p-5 shadow-2xl">
+    <h3 class="text-xs font-bold uppercase tracking-widest mb-5" style="color:var(--text-muted)">Reading Settings</h3>
+
+    <!-- Theme -->
+    <div class="mb-5">
+      <label class="settings-label">Theme</label>
+      <div class="flex gap-1.5 flex-wrap">
+        <button data-theme="dark"  class="theme-btn flex-1 py-2 rounded-xl text-xs font-medium border">Dark</button>
+        <button data-theme="dim"   class="theme-btn flex-1 py-2 rounded-xl text-xs font-medium border">Dim</button>
+        <button data-theme="paper" class="theme-btn flex-1 py-2 rounded-xl text-xs font-medium border">Paper</button>
+        <button data-theme="sepia" class="theme-btn flex-1 py-2 rounded-xl text-xs font-medium border">Sepia</button>
+        <button data-theme="light" class="theme-btn flex-1 py-2 rounded-xl text-xs font-medium border">Light</button>
+      </div>
+    </div>
+
+    <!-- Layout -->
+    <div class="mb-5">
+      <label class="settings-label">Layout</label>
+      <div class="flex gap-1.5">
+        <button data-layout="single" class="layout-btn flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/></svg>
+          Single
+        </button>
+        <button data-layout="double" class="layout-btn flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="9" height="18" rx="1.5"/><rect x="13" y="3" width="9" height="18" rx="1.5"/></svg>
+          Double
+        </button>
+        <button data-layout="scroll" class="layout-btn flex-1 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          Scroll
+        </button>
+      </div>
+    </div>
+
+    <!-- Font -->
+    <div class="mb-5">
+      <label class="settings-label">Font Family</label>
+      <div class="flex gap-1.5 flex-wrap">
+        <button data-font="Inter"       class="font-btn px-3 py-1.5 rounded-lg text-xs border">Sans</button>
+        <button data-font="Lora"        class="font-btn px-3 py-1.5 rounded-lg text-xs border" style="font-family:Lora,serif">Lora</button>
+        <button data-font="Merriweather" class="font-btn px-3 py-1.5 rounded-lg text-xs border">Merriweather</button>
+        <button data-font="Georgia"     class="font-btn px-3 py-1.5 rounded-lg text-xs border" style="font-family:Georgia,serif">Georgia</button>
+      </div>
+    </div>
+
+    <!-- Font Size -->
+    <div class="mb-4">
+      <label class="settings-label">Font Size: <span id="font-size-label">100%</span></label>
+      <input id="font-size-range" type="range" min="70" max="200" value="100" step="5" class="accent-slider" />
+    </div>
+
+    <!-- Line Spacing -->
+    <div class="mb-4">
+      <label class="settings-label">Line Spacing: <span id="line-height-label">1.6</span></label>
+      <input id="line-height-range" type="range" min="1.2" max="2.5" value="1.6" step="0.1" class="accent-slider" />
+    </div>
+
+    <!-- Page Width -->
+    <div>
+      <label class="settings-label">Page Width: <span id="margin-label">60%</span></label>
+      <input id="margin-range" type="range" min="40" max="95" value="60" step="5" class="accent-slider" />
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       BOOKMARKS PANEL
+  ════════════════════════════════════════════ -->
+  <div id="bookmarks-panel" class="hidden fixed top-16 right-16 z-[60] w-72 rounded-2xl settings-panel p-5 shadow-2xl max-h-96 overflow-y-auto">
+    <h3 class="text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--text-muted)">Bookmarks</h3>
+    <div id="bookmarks-list" class="space-y-2"></div>
+    <p id="no-bookmarks" class="text-xs text-center py-4" style="color:var(--text-faint)">No bookmarks yet</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       UPLOAD OVERLAY
+  ════════════════════════════════════════════ -->
+  <div id="upload-overlay" class="hidden fixed inset-0 z-[70] backdrop-blur-sm flex items-center justify-center">
+    <div class="settings-panel rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
+      <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse"
+        style="background:var(--accent-glow); border:1px solid var(--accent)">
+        <svg class="w-8 h-8" style="color:var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+      </div>
+      <p id="upload-status" class="text-sm" style="color:var(--text-muted)">Processing book…</p>
+      <div class="mt-4 h-1.5 rounded-full overflow-hidden" style="background:var(--surface2)">
+        <div id="upload-progress" class="h-full rounded-full transition-all duration-300" style="width:0%; background:var(--accent)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       TOAST
+  ════════════════════════════════════════════ -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] text-sm px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+    <svg id="toast-icon" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+    </svg>
+    <span id="toast-message"></span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/epub-handler.js"></script>
+  <script src="js/library.js"></script>
+  <script src="js/reader.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
