@@ -51,6 +51,15 @@ const Reader = (() => {
 
     buildToc();
     bindReaderEvents();
+
+    if (bookRecord.locations) {
+      try {
+        book.locations.load(bookRecord.locations);
+      } catch (err) {
+        console.error("Failed to load saved locations:", err);
+      }
+    }
+
     updateProgressUI();
   }
 
@@ -176,7 +185,7 @@ const Reader = (() => {
     if (patch.layout && patch.layout !== wasLayout) {
       createRendition(currentCfi).then(() => {
         buildToc();
-        book.locations.generate(1000).catch(() => {});
+        updateProgressUI();
       });
     } else {
       applyRenditionTheme();
@@ -204,8 +213,19 @@ const Reader = (() => {
       if (!loc || !loc.start) return;
       currentCfi = loc.start.cfi;
 
-      const pct = Math.round(book.locations.percentageFromCfi(currentCfi) * 100);
-      const displayPct = isNaN(pct) ? 0 : Math.max(0, Math.min(100, pct));
+      let pct = Math.round(book.locations.percentageFromCfi(currentCfi) * 100);
+      let displayPct = isNaN(pct) ? 0 : Math.max(0, Math.min(100, pct));
+
+      // Fallback: estimate overall progress using spine items if locations are not yet loaded/generated
+      if (displayPct === 0) {
+        const spineIndex = loc.start.index;
+        const totalSpines = book.spine.length || 1;
+        const innerPage = loc.start.displayed.page || 1;
+        const innerTotal = loc.start.displayed.total || 1;
+        const progressInSpine = innerTotal > 0 ? (innerPage - 1) / innerTotal : 0;
+        displayPct = Math.round(((spineIndex + progressInSpine) / totalSpines) * 100);
+        displayPct = Math.max(0, Math.min(100, displayPct));
+      }
 
       progressBar.style.width     = displayPct + '%';
       progressLabel.textContent   = displayPct + '%';
@@ -336,7 +356,31 @@ const Reader = (() => {
       updateSettings({ margin: Number(e.target.value) });
     });
 
-    book.locations.generate(1000).catch(() => {});
+    generateLocations();
+  }
+
+  function generateLocations() {
+    if (bookRecord.locations) return;
+
+    // Determine dynamic character step size depending on book size
+    // Larger step size for larger books to generate faster and prevent lags.
+    let step = 1000;
+    if (bookRecord.fileSize) {
+      const sizeMb = bookRecord.fileSize / (1024 * 1024);
+      if (sizeMb > 5) step = 4000;
+      else if (sizeMb > 2) step = 2000;
+      else if (sizeMb > 1) step = 1500;
+    }
+
+    book.locations.generate(step)
+      .then(() => {
+        bookRecord.locations = book.locations.export();
+        Storage.saveBook(bookRecord).catch(() => {});
+        updateProgressUI();
+      })
+      .catch(err => {
+        console.error("Error generating locations:", err);
+      });
   }
 
   function handleKeyDown(e) {
