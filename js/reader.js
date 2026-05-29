@@ -26,6 +26,21 @@ const Reader = (() => {
   const settingsPanel = document.getElementById('settings-panel');
   const bookmarksPanel= document.getElementById('bookmarks-panel');
 
+  let searchOpen   = false;
+  let searchAbortController = null;
+  let currentHighlight = null;
+
+  let pdfDoc       = null;
+  let currentPdfPage = 1;
+  let mobiDoc      = null;
+  let currentMobiChapterId = null;
+
+  const searchSidebar = document.getElementById('search-sidebar');
+  const searchInput   = document.getElementById('reader-search-input');
+  const searchClear   = document.getElementById('reader-search-clear');
+  const searchList    = document.getElementById('search-results-list');
+  const searchMsg     = document.getElementById('search-placeholder-msg');
+
   /* ── Open ── */
   async function open(bookId) {
     bookRecord = await Storage.getBook(bookId);
@@ -42,25 +57,41 @@ const Reader = (() => {
 
     App.applyTheme(settings.theme);
 
-    if (book) { try { book.destroy(); } catch(_) {} }
+    cleanupRenderers();
 
-    book = EpubHandler.openBook(bookRecord.data);
-    await book.ready;
+    const fmt = bookRecord.format;
 
-    await createRendition();
+    if (fmt === 'pdf') {
+      await initPdfReader();
+    } else if (fmt === 'azw3' || fmt === 'mobi') {
+      await initMobiReader();
+    } else {
+      // EPUB
+      book = EpubHandler.openBook(bookRecord.data);
+      await book.ready;
+      await createRendition();
 
-    buildToc();
-    bindReaderEvents();
-
-    if (bookRecord.locations) {
-      try {
-        book.locations.load(bookRecord.locations);
-      } catch (err) {
-        console.error("Failed to load saved locations:", err);
+      if (bookRecord.locations) {
+        try {
+          book.locations.load(bookRecord.locations);
+        } catch (err) {
+          console.error("Failed to load saved locations:", err);
+        }
       }
     }
 
+    buildToc();
+    bindReaderEvents();
     updateProgressUI();
+  }
+
+  function cleanupRenderers() {
+    if (rendition) { try { rendition.destroy(); } catch(_) {} rendition = null; }
+    if (book) { try { book.destroy(); } catch(_) {} book = null; }
+    pdfDoc = null;
+    mobiDoc = null;
+    epubContainer.innerHTML = '';
+    epubContainer.style.overflowY = '';
   }
 
   /** Create (or recreate) the rendition with the current layout setting */
@@ -104,8 +135,7 @@ const Reader = (() => {
       if (mins > 0) Storage.recordSession(bookRecord.id, mins);
       sessionStart = null;
     }
-    if (rendition) { try { rendition.destroy(); } catch(_) {} rendition = null; }
-    if (book)      { try { book.destroy();      } catch(_) {} book = null; }
+    cleanupRenderers();
 
     closePanels();
     readerView.classList.add('hidden');
@@ -121,13 +151,22 @@ const Reader = (() => {
     tocList.innerHTML = '';
     const toc = bookRecord.toc || [];
     if (!toc.length) { tocList.innerHTML = '<p class="text-xs p-3" style="color:var(--text-faint)">No table of contents</p>'; return; }
+    
     toc.forEach(item => {
       const btn = document.createElement('button');
-      btn.className = `toc-item level-${item.depth}`;
+      btn.className = `toc-item level-${item.depth || 1}`;
       btn.textContent = item.label;
       btn.dataset.href = item.href;
       btn.addEventListener('click', () => {
-        rendition?.display(item.href).catch(() => {});
+        const fmt = bookRecord.format;
+        if (fmt === 'pdf') {
+          const pageNum = parseInt(item.href, 10);
+          if (!isNaN(pageNum)) renderPdfPage(pageNum);
+        } else if (fmt === 'azw3' || fmt === 'mobi') {
+          renderMobiChapter(item.href);
+        } else {
+          rendition?.display(item.href).catch(() => {});
+        }
         if (window.innerWidth < 640) toggleToc(false);
       });
       tocList.appendChild(btn);
@@ -160,6 +199,11 @@ const Reader = (() => {
       },
       'a':   { color: `${ts.link} !important` },
       'p, div, span, li, h1, h2, h3, h4, h5, h6': { color: `${ts.text} !important` },
+      '.search-highlight-class': {
+        'background-color': 'rgba(245, 166, 35, 0.45) !important',
+        'border-radius': '2px',
+        'box-shadow': '0 0 4px rgba(245, 166, 35, 0.25)',
+      }
     });
     rendition.themes.select('default');
   }
@@ -182,13 +226,25 @@ const Reader = (() => {
 
     if (patch.theme) App.applyTheme(patch.theme);
 
-    if (patch.layout && patch.layout !== wasLayout) {
-      createRendition(currentCfi).then(() => {
-        buildToc();
-        updateProgressUI();
-      });
+    const fmt = bookRecord.format;
+    if (fmt === 'pdf') {
+      if (!patch.theme) {
+        renderPdfPage(currentPdfPage);
+      }
+    } else if (fmt === 'azw3' || fmt === 'mobi') {
+      if (currentMobiChapterId) {
+        renderMobiChapter(currentMobiChapterId);
+      }
     } else {
-      applyRenditionTheme();
+      // EPUB
+      if (patch.layout && patch.layout !== wasLayout) {
+        createRendition(currentCfi).then(() => {
+          buildToc();
+          updateProgressUI();
+        });
+      } else {
+        applyRenditionTheme();
+      }
     }
     refreshSettingsUI();
   }
@@ -207,25 +263,65 @@ const Reader = (() => {
 
   /* ── Progress ── */
   async function updateProgressUI() {
+    if (!bookRecord) return;
+    const fmt = bookRecord.format;
+    
+    if (fmt === 'pdf') {
+      if (pdfDoc) {
+        const pageNum = parseInt(bookRecord.currentCfi || '1', 10);
+        currentPdfPage = pageNum;
+        progressBar.style.width = Math.round((pageNum / pdfDoc.numPages) * 100) + '%';
+        progressLabel.textContent = Math.round((pageNum / pdfDoc.numPages) * 100) + '%';
+        locationLabel.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+        chapterLabel.textContent = '';
+      }
+      return;
+    }
+    
+    if (fmt === 'azw3' || fmt === 'mobi') {
+      if (mobiDoc) {
+        const chapId = bookRecord.currentCfi || (mobiDoc.getSpine()[0]?.id);
+        currentMobiChapterId = chapId;
+        const spine = mobiDoc.getSpine() || [];
+        const idx = spine.findIndex(item => String(item.id) === String(chapId));
+        const total = spine.length || 1;
+        const pct = Math.round((Math.max(0, idx) / total) * 100);
+        progressBar.style.width = pct + '%';
+        progressLabel.textContent = pct + '%';
+        locationLabel.textContent = `Chapter ${Math.max(0, idx) + 1} of ${total}`;
+        const chap = spine[idx];
+        chapterLabel.textContent = chap ? (chap.title || `Chapter ${idx + 1}`) : '';
+      }
+      return;
+    }
+
     if (!book || !rendition) return;
     try {
       const loc = rendition.currentLocation();
       if (!loc || !loc.start) return;
       currentCfi = loc.start.cfi;
 
-      let pct = Math.round(book.locations.percentageFromCfi(currentCfi) * 100);
-      let displayPct = isNaN(pct) ? 0 : Math.max(0, Math.min(100, pct));
+      const locationsLoaded = book.locations && book.locations.length > 0;
+      let displayPct;
 
-      // Fallback: estimate overall progress using spine items if locations are not yet loaded/generated
-      if (displayPct === 0) {
+      if (locationsLoaded) {
+        const pct = book.locations.percentageFromCfi(currentCfi);
+        if (typeof pct === 'number' && !isNaN(pct) && pct >= 0) {
+          displayPct = Math.round(pct * 100);
+        }
+      }
+
+      // If locations are not loaded or the percentage calculation failed, use fallback
+      if (displayPct === undefined || isNaN(displayPct)) {
         const spineIndex = loc.start.index;
         const totalSpines = book.spine.length || 1;
         const innerPage = loc.start.displayed.page || 1;
         const innerTotal = loc.start.displayed.total || 1;
         const progressInSpine = innerTotal > 0 ? (innerPage - 1) / innerTotal : 0;
         displayPct = Math.round(((spineIndex + progressInSpine) / totalSpines) * 100);
-        displayPct = Math.max(0, Math.min(100, displayPct));
       }
+
+      displayPct = Math.max(0, Math.min(100, displayPct));
 
       progressBar.style.width     = displayPct + '%';
       progressLabel.textContent   = displayPct + '%';
@@ -244,8 +340,43 @@ const Reader = (() => {
   }
 
   /* ── Navigation ── */
-  function nextPage() { rendition?.next(); }
-  function prevPage() { rendition?.prev(); }
+  function nextPage() {
+    const fmt = bookRecord.format;
+    if (fmt === 'pdf') {
+      if (pdfDoc && currentPdfPage < pdfDoc.numPages) {
+        renderPdfPage(currentPdfPage + 1);
+      }
+    } else if (fmt === 'azw3' || fmt === 'mobi') {
+      if (mobiDoc) {
+        const spine = mobiDoc.getSpine() || [];
+        const idx = spine.findIndex(item => String(item.id) === String(currentMobiChapterId));
+        if (idx !== -1 && idx < spine.length - 1) {
+          renderMobiChapter(spine[idx + 1].id);
+        }
+      }
+    } else {
+      rendition?.next();
+    }
+  }
+
+  function prevPage() {
+    const fmt = bookRecord.format;
+    if (fmt === 'pdf') {
+      if (pdfDoc && currentPdfPage > 1) {
+        renderPdfPage(currentPdfPage - 1);
+      }
+    } else if (fmt === 'azw3' || fmt === 'mobi') {
+      if (mobiDoc) {
+        const spine = mobiDoc.getSpine() || [];
+        const idx = spine.findIndex(item => String(item.id) === String(currentMobiChapterId));
+        if (idx > 0) {
+          renderMobiChapter(spine[idx - 1].id);
+        }
+      }
+    } else {
+      rendition?.prev();
+    }
+  }
 
   /* ── Bookmarks ── */
   function toggleBookmark() {
@@ -298,6 +429,32 @@ const Reader = (() => {
   function toggleToc(force) {
     tocOpen = typeof force === 'boolean' ? force : !tocOpen;
     tocSidebar.classList.toggle('hidden', !tocOpen);
+    if (tocOpen) {
+      toggleSearchSidebar(false);
+      closeSettingsAndBookmarks();
+    }
+  }
+
+  function toggleSearchSidebar(force) {
+    searchOpen = typeof force === 'boolean' ? force : !searchOpen;
+    searchSidebar.classList.toggle('hidden', !searchOpen);
+    document.getElementById('search-toggle-btn').classList.toggle('active', searchOpen);
+    if (searchOpen) {
+      toggleToc(false);
+      closeSettingsAndBookmarks();
+      searchInput.focus();
+    } else {
+      if (searchAbortController) {
+        searchAbortController.abort();
+        searchAbortController = null;
+      }
+    }
+  }
+
+  function closeSettingsAndBookmarks() {
+    panelOpen = false;
+    settingsPanel.classList.add('hidden');
+    bookmarksPanel.classList.add('hidden');
   }
 
   function toggleSettingsPanel() {
@@ -305,6 +462,8 @@ const Reader = (() => {
     panelOpen = 'settings';
     settingsPanel.classList.remove('hidden');
     bookmarksPanel.classList.add('hidden');
+    toggleToc(false);
+    toggleSearchSidebar(false);
     refreshSettingsUI();
   }
 
@@ -313,14 +472,26 @@ const Reader = (() => {
     panelOpen = 'bookmarks';
     bookmarksPanel.classList.remove('hidden');
     settingsPanel.classList.add('hidden');
+    toggleToc(false);
+    toggleSearchSidebar(false);
     renderBookmarks();
   }
 
   function closePanels() {
-    panelOpen = false; tocOpen = false;
+    panelOpen = false; tocOpen = false; searchOpen = false;
     tocSidebar.classList.add('hidden');
+    searchSidebar.classList.add('hidden');
     settingsPanel.classList.add('hidden');
     bookmarksPanel.classList.add('hidden');
+    document.getElementById('search-toggle-btn').classList.remove('active');
+    if (currentHighlight && rendition) {
+      try { rendition.annotations.remove(currentHighlight, "highlight"); } catch(_) {}
+      currentHighlight = null;
+    }
+    if (searchAbortController) {
+      searchAbortController.abort();
+      searchAbortController = null;
+    }
   }
 
   /* ── Events ── */
@@ -329,6 +500,7 @@ const Reader = (() => {
     document.getElementById('next-btn').onclick = nextPage;
     document.getElementById('back-to-library').onclick = close;
     document.getElementById('toc-toggle-btn').onclick = () => toggleToc();
+    document.getElementById('search-toggle-btn').onclick = () => toggleSearchSidebar();
     document.getElementById('bookmark-btn').onclick = toggleBookmark;
     document.getElementById('fullscreen-btn').onclick = toggleFullscreen;
     document.getElementById('settings-btn').onclick = toggleSettingsPanel;
@@ -356,7 +528,422 @@ const Reader = (() => {
       updateSettings({ margin: Number(e.target.value) });
     });
 
+    // Search Input Listeners (debounced for maximum responsiveness)
+    let searchTimeout = null;
+    searchInput.addEventListener('input', e => {
+      const q = e.target.value.trim();
+      searchClear.classList.toggle('hidden', !q);
+      
+      if (searchTimeout) clearTimeout(searchTimeout);
+      if (!q) {
+        clearSearchResults();
+        return;
+      }
+      
+      searchTimeout = setTimeout(() => {
+        performSearch(q);
+      }, 300);
+    });
+
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchClear.classList.add('hidden');
+      clearSearchResults();
+      searchInput.focus();
+    });
+
     generateLocations();
+  }
+
+  /* ── Search Book Engine ── */
+  function clearSearchResults() {
+    if (searchAbortController) {
+      searchAbortController.abort();
+      searchAbortController = null;
+    }
+    searchList.innerHTML = '';
+    searchMsg.textContent = 'Enter a keyword to search this book.';
+    searchMsg.classList.remove('hidden');
+    if (currentHighlight && rendition) {
+      try { rendition.annotations.remove(currentHighlight, "highlight"); } catch(_) {}
+      currentHighlight = null;
+    }
+  }
+
+  async function performSearch(query) {
+    if (searchAbortController) searchAbortController.abort();
+    const currentController = new AbortController();
+    searchAbortController = currentController;
+
+    searchList.innerHTML = '';
+    searchMsg.textContent = 'Searching...';
+    searchMsg.classList.remove('hidden');
+
+    if (currentHighlight && rendition) {
+      try { rendition.annotations.remove(currentHighlight, "highlight"); } catch(_) {}
+      currentHighlight = null;
+    }
+
+    const fmt = bookRecord.format;
+    if (fmt === 'pdf') {
+      searchPdfDoc(query, currentController);
+      return;
+    }
+    if (fmt === 'azw3' || fmt === 'mobi') {
+      searchMobiDoc(query, currentController);
+      return;
+    }
+
+    const results = [];
+    const spine = book.spine;
+    const items = spine.spineItems || [];
+
+    try {
+      for (let i = 0; i < items.length; i++) {
+        if (currentController.signal.aborted) return;
+
+        const item = items[i];
+        await item.load(book.load.bind(book));
+        
+        const matches = item.find(query);
+        item.unload();
+
+        if (matches && matches.length) {
+          const chapter = bookRecord.toc?.find(t => t.href && item.href && item.href.includes(t.href.split('#')[0]));
+          const chapterLabel = chapter ? chapter.label : `Section ${i + 1}`;
+
+          matches.forEach(match => {
+            results.push({
+              cfi: match.cfi,
+              excerpt: match.excerpt,
+              chapterLabel
+            });
+          });
+
+          // Render results batch live
+          renderSearchResultsBatch(results, query);
+        }
+      }
+
+      if (currentController.signal.aborted) return;
+
+      if (results.length === 0) {
+        searchMsg.textContent = `No results found for "${query}"`;
+        searchMsg.classList.remove('hidden');
+      } else {
+        searchMsg.classList.add('hidden');
+      }
+    } catch (err) {
+      if (currentController.signal.aborted) return;
+      console.error("Search failed:", err);
+      searchMsg.textContent = 'Search failed.';
+      searchMsg.classList.remove('hidden');
+    }
+  }
+
+  async function searchPdfDoc(query, controller) {
+    if (!pdfDoc) return;
+    const results = [];
+    
+    try {
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        if (controller.signal.aborted) return;
+        const page = await pdfDoc.getPage(i);
+        const textContent = await page.getTextContent();
+        const textItems = textContent.items.map(item => item.str).join(' ');
+        
+        let idx = textItems.toLowerCase().indexOf(query.toLowerCase());
+        while (idx !== -1) {
+          if (controller.signal.aborted) return;
+          const start = Math.max(0, idx - 40);
+          const end = Math.min(textItems.length, idx + query.length + 40);
+          const excerpt = '...' + textItems.slice(start, end) + '...';
+          
+          results.push({
+            cfi: String(i),
+            excerpt,
+            chapterLabel: `Page ${i}`
+          });
+          
+          idx = textItems.toLowerCase().indexOf(query.toLowerCase(), idx + 1);
+        }
+        
+        if (results.length) {
+          renderSearchResultsBatch(results, query);
+        }
+      }
+      
+      if (controller.signal.aborted) return;
+      if (results.length === 0) {
+        searchMsg.textContent = `No results found for "${query}"`;
+        searchMsg.classList.remove('hidden');
+      } else {
+        searchMsg.classList.add('hidden');
+      }
+    } catch (err) {
+      console.error("PDF Search failed:", err);
+    }
+  }
+
+  async function searchMobiDoc(query, controller) {
+    if (!mobiDoc) return;
+    const results = [];
+    const spine = mobiDoc.getSpine() || [];
+    
+    try {
+      for (let i = 0; i < spine.length; i++) {
+        if (controller.signal.aborted) return;
+        const item = spine[i];
+        const chapter = await mobiDoc.loadChapter(item.id);
+        
+        // Strip HTML tag helper
+        const tmp = document.createElement('div');
+        tmp.innerHTML = chapter.html;
+        const text = tmp.textContent || tmp.innerText || "";
+        
+        let idx = text.toLowerCase().indexOf(query.toLowerCase());
+        while (idx !== -1) {
+          if (controller.signal.aborted) return;
+          const start = Math.max(0, idx - 40);
+          const end = Math.min(text.length, idx + query.length + 40);
+          const excerpt = '...' + text.slice(start, end) + '...';
+          
+          results.push({
+            cfi: String(item.id),
+            excerpt,
+            chapterLabel: item.title || `Chapter ${i + 1}`
+          });
+          
+          idx = text.toLowerCase().indexOf(query.toLowerCase(), idx + 1);
+        }
+        
+        if (results.length) {
+          renderSearchResultsBatch(results, query);
+        }
+      }
+      
+      if (controller.signal.aborted) return;
+      if (results.length === 0) {
+        searchMsg.textContent = `No results found for "${query}"`;
+        searchMsg.classList.remove('hidden');
+      } else {
+        searchMsg.classList.add('hidden');
+      }
+    } catch (err) {
+      console.error("Mobi Search failed:", err);
+    }
+  }
+
+  function renderSearchResultsBatch(results, query) {
+    searchList.innerHTML = '';
+    
+    results.forEach(res => {
+      const btn = document.createElement('button');
+      btn.className = 'search-result-item w-full text-left p-2.5 rounded-xl transition-all duration-200 border border-transparent';
+      
+      const escapedExcerpt = escHtml(res.excerpt);
+      const highlighted = highlightKeyword(escapedExcerpt, query);
+
+      btn.innerHTML = `
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-[10px] font-semibold tracking-wider uppercase text-muted truncate max-w-[200px]">${escHtml(res.chapterLabel)}</span>
+        </div>
+        <p class="text-xs leading-relaxed text-muted">${highlighted}</p>
+      `;
+
+      btn.addEventListener('click', () => {
+        const fmt = bookRecord.format;
+        if (fmt === 'pdf') {
+          renderPdfPage(parseInt(res.cfi, 10));
+        } else if (fmt === 'azw3' || fmt === 'mobi') {
+          renderMobiChapter(res.cfi);
+        } else {
+          rendition.display(res.cfi).then(() => {
+            if (currentHighlight) {
+              try { rendition.annotations.remove(currentHighlight, "highlight"); } catch(_) {}
+            }
+            rendition.annotations.add("highlight", res.cfi, {}, null, "search-highlight-class", {});
+            currentHighlight = res.cfi;
+          });
+        }
+
+        if (window.innerWidth < 640) {
+          toggleSearchSidebar(false);
+        }
+      });
+      searchList.appendChild(btn);
+    });
+  }
+
+  function highlightKeyword(text, keyword) {
+    if (!keyword) return text;
+    const regex = new RegExp(`(${escapeRegExp(keyword)})`, 'gi');
+    return text.replace(regex, `<mark class="bg-accent/30 text-accent font-medium rounded px-0.5">$1</mark>`);
+  }
+
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /* ── PDF Reader Engine ── */
+  async function initPdfReader() {
+    cleanupRenderers();
+    try {
+      const workerCode = `importScripts("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js");`;
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+    } catch (_) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }
+    
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(bookRecord.data) });
+    pdfDoc = await loadingTask.promise;
+    
+    const startPage = parseInt(bookRecord.currentCfi || '1', 10);
+    await renderPdfPage(startPage);
+  }
+
+  async function renderPdfPage(pageNumber) {
+    if (!pdfDoc) return;
+    currentPdfPage = pageNumber;
+    
+    epubContainer.innerHTML = '';
+    epubContainer.style.overflowY = 'auto';
+    
+    const page = await pdfDoc.getPage(pageNumber);
+    
+    // Scale fitting calculation with safety fallbacks
+    let containerWidth = epubContainer.clientWidth - 40;
+    let containerHeight = epubContainer.clientHeight - 40;
+    if (containerWidth <= 0) containerWidth = 800;
+    if (containerHeight <= 0) containerHeight = 1000;
+    
+    const originalViewport = page.getViewport({ scale: 1.0 });
+    const scaleX = containerWidth / originalViewport.width;
+    const scaleY = containerHeight / originalViewport.height;
+    
+    const scale = Math.min(scaleX, scaleY, 2.0);
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pdf-page-canvas mx-auto my-4';
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    epubContainer.appendChild(canvas);
+    
+    await page.render({ canvasContext: context, viewport }).promise;
+    
+    // Update stats
+    const pct = Math.round((pageNumber / pdfDoc.numPages) * 100);
+    progressBar.style.width = pct + '%';
+    progressLabel.textContent = pct + '%';
+    locationLabel.textContent = `Page ${pageNumber} of ${pdfDoc.numPages}`;
+    chapterLabel.textContent = '';
+    
+    await Storage.updateProgress(bookRecord.id, String(pageNumber), pct, '');
+    bookRecord.progress = pct;
+    bookRecord.currentCfi = String(pageNumber);
+  }
+
+  /* ── Kindle Reader Engine (AZW3/MOBI) ── */
+  async function initMobiReader() {
+    cleanupRenderers();
+    const mobiParser = await import('https://cdn.jsdelivr.net/npm/@lingo-reader/mobi-parser/+esm');
+    
+    // Create a virtual File object for complete type safety in the browser
+    const fileBlob = new Blob([bookRecord.data], { type: 'application/octet-stream' });
+    const file = new File([fileBlob], bookRecord.fileName || 'book.azw3');
+    
+    const fmt = bookRecord.format;
+    if (fmt === 'azw3') {
+      mobiDoc = await mobiParser.initKf8File(file);
+    } else {
+      mobiDoc = await mobiParser.initMobiFile(file);
+    }
+    
+    const spine = mobiDoc.getSpine() || [];
+    const startChapterId = bookRecord.currentCfi || (spine[0] ? String(spine[0].id) : '0');
+    await renderMobiChapter(startChapterId);
+  }
+
+  async function renderMobiChapter(chapterId) {
+    if (!mobiDoc) return;
+    currentMobiChapterId = chapterId;
+    
+    epubContainer.innerHTML = '';
+    epubContainer.style.overflowY = '';
+    
+    const chapter = await mobiDoc.loadChapter(chapterId);
+    
+    const iframe = document.createElement('iframe');
+    iframe.className = 'w-full h-full border-none';
+    epubContainer.appendChild(iframe);
+    
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    const finalHtml = injectMobiStyles(chapter.html, chapter.css);
+    iframeDoc.write(finalHtml);
+    iframeDoc.close();
+    
+    iframeDoc.addEventListener('keydown', handleKeyDown);
+    
+    // Update progress
+    const spine = mobiDoc.getSpine() || [];
+    const idx = spine.findIndex(item => String(item.id) === String(chapterId));
+    const total = spine.length || 1;
+    const pct = Math.round((Math.max(0, idx) / total) * 100);
+    
+    progressBar.style.width = pct + '%';
+    progressLabel.textContent = pct + '%';
+    locationLabel.textContent = `Chapter ${Math.max(0, idx) + 1} of ${total}`;
+    
+    const currentChapter = spine[idx];
+    chapterLabel.textContent = currentChapter ? (currentChapter.title || `Chapter ${idx + 1}`) : '';
+    
+    await Storage.updateProgress(bookRecord.id, String(chapterId), pct, chapterLabel.textContent);
+    bookRecord.progress = pct;
+    bookRecord.currentCfi = String(chapterId);
+  }
+
+  function injectMobiStyles(html, customCss) {
+    const ts = getThemeStyles(settings.theme);
+    const styleTag = `
+      <style>
+        body {
+          background-color: ${ts.bg} !important;
+          color: ${ts.text} !important;
+          font-family: "${settings.font || 'Lora'}", Georgia, serif !important;
+          font-size: ${settings.fontSize || 100}% !important;
+          line-height: ${settings.lineHeight || 1.6} !important;
+          padding: 40px ${(100 - (settings.margin || 60)) / 2}% !important;
+          margin: 0 !important;
+        }
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+          border-radius: 4px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          display: block;
+          margin: 20px auto;
+        }
+        a {
+          color: ${ts.link} !important;
+          text-decoration: underline;
+        }
+        p {
+          margin-bottom: 1.5em !important;
+          text-align: justify;
+        }
+        ${customCss || ''}
+      </style>
+    `;
+    if (html.includes('<head>')) {
+      return html.replace('<head>', `<head>${styleTag}`);
+    } else {
+      return `<head>${styleTag}</head><body>${html}</body>`;
+    }
   }
 
   function generateLocations() {

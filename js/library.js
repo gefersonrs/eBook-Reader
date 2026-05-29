@@ -41,7 +41,8 @@ const Library = (() => {
     document.body.addEventListener('drop', e => {
       e.preventDefault();
       document.body.classList.remove('drag-over');
-      const files = [...e.dataTransfer.files].filter(f => f.name.endsWith('.epub'));
+      const validExtensions = ['.epub', '.pdf', '.azw3', '.mobi'];
+      const files = [...e.dataTransfer.files].filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
       if (files.length) handleFiles(files);
     });
 
@@ -75,8 +76,9 @@ const Library = (() => {
 
   /* ── File Handling ── */
   async function handleFiles(files) {
-    const arr = [...files].filter(f => f.name.toLowerCase().endsWith('.epub'));
-    if (!arr.length) { App.toast('Please select .epub files only', 'error'); return; }
+    const validExtensions = ['.epub', '.pdf', '.azw3', '.mobi'];
+    const arr = [...files].filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
+    if (!arr.length) { App.toast('Supported formats: .epub, .pdf, .azw3, .mobi', 'error'); return; }
 
     for (const file of arr) {
       const existing = allBooks.find(b => b.fileName === file.name && b.fileSize === file.size);

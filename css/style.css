@@ -442,6 +442,72 @@ body {
 .toc-item.level-2 { padding-left: 24px; font-size: 0.75rem; }
 .toc-item.level-3 { padding-left: 36px; font-size: 0.7rem; }
 
+/* ── Search Sidebar ── */
+#reader-search-input {
+  background: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text) !important;
+}
+#reader-search-input::placeholder { color: var(--text-muted); }
+#reader-search-input:focus { border-color: var(--accent) !important; }
+
+#search-sidebar h3 { color: var(--text-muted); }
+
+.search-result-item {
+  background: var(--surface2) !important;
+  border: 1px solid var(--border) !important;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+.search-result-item:hover {
+  background: var(--surface3) !important;
+  border-color: var(--accent) !important;
+  transform: translateY(-1px);
+}
+.search-result-item mark {
+  background-color: var(--accent-glow) !important;
+  color: var(--accent) !important;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+#search-toggle-btn.active {
+  color: var(--accent) !important;
+  background: var(--btn-hover) !important;
+}
+
+/* ── Annotation Highlight Style ── */
+.search-highlight-class {
+  background-color: rgba(245, 166, 35, 0.45) !important;
+  border-radius: 2px;
+  box-shadow: 0 0 4px var(--accent-glow);
+}
+
+/* ── PDF Page Canvases and hardware accelerated theme filters ── */
+.pdf-page-canvas {
+  display: block;
+  max-width: 100%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  transition: filter 0.3s ease, transform 0.2s ease;
+}
+
+[data-theme="dark"] .pdf-page-canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.15);
+}
+[data-theme="dim"] .pdf-page-canvas {
+  filter: invert(0.92) hue-rotate(180deg) brightness(0.85) contrast(1.1);
+}
+[data-theme="paper"] .pdf-page-canvas {
+  filter: sepia(0.25) brightness(0.98) contrast(1.02);
+}
+[data-theme="sepia"] .pdf-page-canvas {
+  filter: sepia(0.6) brightness(0.95) contrast(1.05);
+}
+[data-theme="light"] .pdf-page-canvas {
+  filter: none;
+}
+
 /* ── Reader View ── */
 #reader-view { background: var(--epub-bg) !important; }
 

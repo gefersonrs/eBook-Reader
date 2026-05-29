@@ -44,7 +44,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <span class="text-xl font-semibold tracking-tight" style="color:var(--text)">Folio</span>
+          <span class="text-xl font-semibold tracking-tight hidden sm:inline" style="color:var(--text)">Folio</span>
         </div>
 
         <!-- Search -->
@@ -103,9 +103,9 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Add Book
+            <span class="hidden sm:inline">Add Book</span>
           </button>
-          <input id="file-input" type="file" accept=".epub" class="hidden" multiple />
+          <input id="file-input" type="file" accept=".epub,.pdf,.azw3,.mobi" class="hidden" multiple />
         </div>
       </div>
     </header>
@@ -175,6 +175,11 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
           </svg>
         </button>
+        <button id="search-toggle-btn" title="Search Book" class="p-2 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
         <button id="bookmark-btn" title="Bookmark" class="p-2 rounded-lg transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -206,6 +211,29 @@
           <h3 class="text-xs font-semibold uppercase tracking-widest">Contents</h3>
         </div>
         <div id="toc-list" class="p-2"></div>
+      </aside>
+
+      <!-- Search Sidebar -->
+      <aside id="search-sidebar" class="toc-sidebar hidden flex-shrink-0 border-r flex flex-col z-20">
+        <div class="p-4 border-b flex flex-col gap-3" style="border-color:var(--border)">
+          <h3 class="text-xs font-semibold uppercase tracking-widest">Search</h3>
+          <div class="relative">
+            <input id="reader-search-input" type="text" placeholder="Search text…"
+              class="w-full rounded-xl pl-9 pr-8 py-2 text-sm border focus:outline-none transition-all" />
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style="color:var(--text-faint)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <button id="reader-search-clear" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-surface2 transition-all">
+              <svg class="w-3 h-3" style="color:var(--text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="search-results-container" class="flex-1 overflow-y-auto p-2">
+          <p id="search-placeholder-msg" class="text-xs text-center py-8" style="color:var(--text-faint)">Enter a keyword to search this book.</p>
+          <div id="search-results-list" class="space-y-1.5"></div>
+        </div>
       </aside>
 
       <!-- EPUB Frame -->
@@ -341,6 +369,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/epub-handler.js"></script>
   <script src="js/library.js"></script>
