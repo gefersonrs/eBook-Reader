@@ -271,8 +271,8 @@ const Reader = (() => {
         const pageNum = parseInt(bookRecord.currentCfi || '1', 10);
         currentPdfPage = pageNum;
         progressBar.style.width = Math.round((pageNum / pdfDoc.numPages) * 100) + '%';
-        progressLabel.textContent = Math.round((pageNum / pdfDoc.numPages) * 100) + '%';
-        locationLabel.textContent = `Page ${pageNum} of ${pdfDoc.numPages}`;
+        progressLabel.textContent = `${pageNum} / ${pdfDoc.numPages}`;
+        locationLabel.textContent = '';
         chapterLabel.textContent = '';
       }
       return;
@@ -287,8 +287,8 @@ const Reader = (() => {
         const total = spine.length || 1;
         const pct = Math.round((Math.max(0, idx) / total) * 100);
         progressBar.style.width = pct + '%';
-        progressLabel.textContent = pct + '%';
-        locationLabel.textContent = `Chapter ${Math.max(0, idx) + 1} of ${total}`;
+        progressLabel.textContent = `Chapter ${Math.max(0, idx) + 1} / ${total}`;
+        locationLabel.textContent = '';
         const chap = spine[idx];
         chapterLabel.textContent = chap ? (chap.title || `Chapter ${idx + 1}`) : '';
       }
@@ -324,13 +324,24 @@ const Reader = (() => {
       displayPct = Math.max(0, Math.min(100, displayPct));
 
       progressBar.style.width     = displayPct + '%';
-      progressLabel.textContent   = displayPct + '%';
+      
+      let totalPages;
+      let currentPage;
+
+      if (locationsLoaded) {
+        totalPages = book.locations.length;
+        currentPage = Math.max(1, book.locations.locationFromCfi(currentCfi) + 1);
+      } else {
+        totalPages = Math.max(1, book.spine.length * 15);
+        currentPage = Math.max(1, Math.round((displayPct / 100) * totalPages));
+      }
+      progressLabel.textContent = `${currentPage} / ${totalPages}`;
 
       const toc     = bookRecord.toc || [];
       const spineHref = loc.start.href;
       const chapter = toc.find(t => spineHref && t.href && spineHref.includes(t.href.split('#')[0]));
       chapterLabel.textContent  = chapter ? chapter.label : '';
-      locationLabel.textContent = `Page ${loc.start.displayed.page} of ${loc.start.displayed.total}`;
+      locationLabel.textContent = `Page ${loc.start.displayed.page} of ${loc.start.displayed.total} (Chapter)`;
       if (chapter) highlightTocItem(chapter.href);
 
       await Storage.updateProgress(bookRecord.id, currentCfi, displayPct, chapter?.label);
@@ -838,8 +849,8 @@ const Reader = (() => {
     // Update stats
     const pct = Math.round((pageNumber / pdfDoc.numPages) * 100);
     progressBar.style.width = pct + '%';
-    progressLabel.textContent = pct + '%';
-    locationLabel.textContent = `Page ${pageNumber} of ${pdfDoc.numPages}`;
+    progressLabel.textContent = `${pageNumber} / ${pdfDoc.numPages}`;
+    locationLabel.textContent = '';
     chapterLabel.textContent = '';
     
     await Storage.updateProgress(bookRecord.id, String(pageNumber), pct, '');
@@ -896,8 +907,8 @@ const Reader = (() => {
     const pct = Math.round((Math.max(0, idx) / total) * 100);
     
     progressBar.style.width = pct + '%';
-    progressLabel.textContent = pct + '%';
-    locationLabel.textContent = `Chapter ${Math.max(0, idx) + 1} of ${total}`;
+    progressLabel.textContent = `Chapter ${Math.max(0, idx) + 1} / ${total}`;
+    locationLabel.textContent = '';
     
     const currentChapter = spine[idx];
     chapterLabel.textContent = currentChapter ? (currentChapter.title || `Chapter ${idx + 1}`) : '';
@@ -961,7 +972,7 @@ const Reader = (() => {
 
     book.locations.generate(step)
       .then(() => {
-        bookRecord.locations = book.locations.export();
+        bookRecord.locations = book.locations.save();
         Storage.saveBook(bookRecord).catch(() => {});
         updateProgressUI();
       })

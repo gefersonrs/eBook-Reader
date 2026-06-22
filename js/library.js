@@ -7,6 +7,7 @@ const Library = (() => {
   let allBooks     = [];
   let currentQuery = '';
   let currentSort  = 'recent';
+  let activeEditBook = null;
 
   const booksGrid    = document.getElementById('books-grid');
   const emptyState   = document.getElementById('empty-state');
@@ -65,6 +66,15 @@ const Library = (() => {
     });
 
     refreshThemePicker();
+
+    // Edit Metadata Modal events
+    document.getElementById('btn-cancel-meta').addEventListener('click', closeEditMetaModal);
+    document.getElementById('btn-save-meta').addEventListener('click', saveMetadata);
+    document.getElementById('metadata-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('metadata-modal')) {
+        closeEditMetaModal();
+      }
+    });
   }
 
   function refreshThemePicker() {
@@ -91,6 +101,11 @@ const Library = (() => {
         allBooks.unshift(book);
         App.toast(`"${book.title}" added!`);
         render();
+
+        // If it's a PDF and metadata is missing/default, auto-open the edit modal
+        if (book.format === 'pdf' && (book.author === 'Unknown Author' || book.title === file.name.replace(/\.pdf$/i, ''))) {
+          openEditMetaModal(book);
+        }
       } catch (err) {
         console.error('Error processing EPUB:', err);
         App.toast('Failed to add book. File may be corrupted.', 'error');
@@ -221,6 +236,9 @@ const Library = (() => {
           <button class="btn-open" data-action="open"   data-id="${book.id}" title="Open">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </button>
+          <button class="btn-edit" data-action="edit" data-id="${book.id}" title="Edit Metadata">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
           <button class="btn-delete" data-action="delete" data-id="${book.id}" title="Remove">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           </button>
@@ -237,6 +255,7 @@ const Library = (() => {
     `;
 
     div.querySelector('[data-action="open"]').addEventListener('click', e => { e.stopPropagation(); App.openReader(book.id); });
+    div.querySelector('[data-action="edit"]').addEventListener('click', e => { e.stopPropagation(); openEditMetaModal(book); });
     div.querySelector('[data-action="delete"]').addEventListener('click', e => { e.stopPropagation(); confirmDelete(book); });
     div.addEventListener('click', () => App.openReader(book.id));
     return div;
@@ -303,6 +322,48 @@ const Library = (() => {
   function hideUploadOverlay() {
     document.getElementById('upload-overlay').classList.add('hidden');
     setUploadProgress(0);
+  }
+
+  /* ── Metadata Editing ── */
+  function openEditMetaModal(book) {
+    activeEditBook = book;
+    document.getElementById('edit-meta-title').value = book.title;
+    document.getElementById('edit-meta-author').value = book.author;
+    document.getElementById('metadata-modal').classList.remove('hidden');
+  }
+
+  function closeEditMetaModal() {
+    activeEditBook = null;
+    document.getElementById('metadata-modal').classList.add('hidden');
+  }
+
+  async function saveMetadata() {
+    if (!activeEditBook) return;
+    const titleVal = document.getElementById('edit-meta-title').value.trim();
+    const authorVal = document.getElementById('edit-meta-author').value.trim();
+
+    if (!titleVal) {
+      App.toast('Title cannot be empty', 'error');
+      return;
+    }
+
+    activeEditBook.title = titleVal;
+    activeEditBook.author = authorVal || 'Unknown Author';
+
+    try {
+      await Storage.saveBook(activeEditBook);
+      // Update in allBooks local cache list
+      const idx = allBooks.findIndex(b => b.id === activeEditBook.id);
+      if (idx !== -1) {
+        allBooks[idx] = activeEditBook;
+      }
+      App.toast('Metadata updated successfully!');
+      closeEditMetaModal();
+      render();
+    } catch (err) {
+      console.error('Error saving metadata:', err);
+      App.toast('Failed to save metadata', 'error');
+    }
   }
 
   function escHtml(str) {

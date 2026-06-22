@@ -47,8 +47,15 @@ const EpubHandler = (() => {
 
     // Extract metadata
     const meta = await pdf.getMetadata().catch(() => ({ info: {} }));
-    const title = meta.info?.Title || file.name.replace(/\.pdf$/i, '');
-    const author = meta.info?.Author || 'Unknown Author';
+    let title = (meta.info?.Title || '').trim();
+    let author = (meta.info?.Author || '').trim();
+
+    if (!title || title.length === 0) {
+      title = file.name.replace(/\.pdf$/i, '');
+    }
+    if (!author || author.length === 0) {
+      author = 'Unknown Author';
+    }
     onProgress(75);
 
     // Render cover from first page
@@ -230,7 +237,7 @@ const EpubHandler = (() => {
       else if (sizeMb > 1) step = 1500;
 
       await epub.locations.generate(step);
-      locations = epub.locations.export();
+      locations = epub.locations.save();
     } catch (err) {
       console.error("Failed to generate locations during import:", err);
     }

@@ -543,6 +543,14 @@ body {
 }
 .btn-open:hover { background: rgb(245,166,35); }
 
+.btn-edit {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(59,130,246,0.9); color: white;
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.2s;
+}
+.btn-edit:hover { background: rgb(59,130,246); }
+
 /* ── Bookmark Item ── */
 .bookmark-item {
   display: flex; align-items: center; justify-content: space-between;

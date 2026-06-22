@@ -357,6 +357,29 @@
   </div>
 
   <!-- ═══════════════════════════════════════════
+       EDIT METADATA MODAL
+  ════════════════════════════════════════════ -->
+  <div id="metadata-modal" class="hidden fixed inset-0 z-[80] backdrop-blur-sm flex items-center justify-center bg-black/40">
+    <div class="settings-panel rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border" style="border-color:var(--border)">
+      <h3 class="text-sm font-bold uppercase tracking-widest mb-5" style="color:var(--text-muted)">Edit Book Metadata</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color:var(--text-faint)">Title</label>
+          <input id="edit-meta-title" type="text" class="w-full rounded-xl px-4 py-2.5 text-sm border focus:outline-none transition-all" style="background:var(--input-bg); border-color:var(--input-border); color:var(--text)" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color:var(--text-faint)">Author</label>
+          <input id="edit-meta-author" type="text" class="w-full rounded-xl px-4 py-2.5 text-sm border focus:outline-none transition-all" style="background:var(--input-bg); border-color:var(--input-border); color:var(--text)" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button id="btn-cancel-meta" class="px-4 py-2 rounded-xl text-sm font-semibold border transition-all" style="color:var(--text-muted); border-color:var(--border); background:transparent">Cancel</button>
+        <button id="btn-save-meta" class="text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105" style="background:var(--accent)">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
        TOAST
   ════════════════════════════════════════════ -->
   <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] text-sm px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3">
