@@ -27,6 +27,11 @@ const Library = (() => {
     render();
   }
 
+  async function refresh() {
+    allBooks = await Storage.getAllBooks();
+    render();
+  }
+
   /* ── Events ── */
   function bindEvents() {
     searchInput.addEventListener('input', e => { currentQuery = e.target.value.toLowerCase(); render(); });
@@ -370,5 +375,5 @@ const Library = (() => {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  return { init, render, refreshThemePicker };
+  return { init, render, refreshThemePicker, refresh };
 })();

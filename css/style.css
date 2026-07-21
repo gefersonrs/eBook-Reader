@@ -524,7 +524,12 @@ body {
   background: var(--nav-bg) !important;
   border-color: var(--border) !important;
 }
-#chapter-label, #progress-label, #location-label { color: var(--text-faint); }
+.reader-chapter-title {
+  color: var(--text-muted);
+  font-style: normal;
+  border-left: 1px solid var(--border);
+  padding-left: 0.6rem;
+}
 
 /* ── Action Buttons on Cards ── */
 .btn-delete {

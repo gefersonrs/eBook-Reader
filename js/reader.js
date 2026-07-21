@@ -13,6 +13,11 @@ const Reader = (() => {
   let tocOpen      = false;
   let panelOpen    = false;
 
+  let locationsPerSpine = [];
+  let locationsBeforeSpine = [];
+  let updateProgressTimeout = null;
+  let cachedTotalPages = null;
+
   const readerView    = document.getElementById('reader-view');
   const epubContainer = document.getElementById('epub-container');
   const progressBar   = document.getElementById('progress-bar');
@@ -74,6 +79,7 @@ const Reader = (() => {
       if (bookRecord.locations) {
         try {
           book.locations.load(bookRecord.locations);
+          initSpineLocationMapping();
         } catch (err) {
           console.error("Failed to load saved locations:", err);
         }
@@ -90,8 +96,14 @@ const Reader = (() => {
     if (book) { try { book.destroy(); } catch(_) {} book = null; }
     pdfDoc = null;
     mobiDoc = null;
+    locationsPerSpine = [];
+    locationsBeforeSpine = [];
+    cachedTotalPages = null;
+    if (updateProgressTimeout) { clearTimeout(updateProgressTimeout); updateProgressTimeout = null; }
     epubContainer.innerHTML = '';
     epubContainer.style.overflowY = '';
+    epubContainer.style.paddingLeft = '';
+    epubContainer.style.paddingRight = '';
   }
 
   /** Create (or recreate) the rendition with the current layout setting */
@@ -103,6 +115,12 @@ const Reader = (() => {
 
     const layout = settings.layout || 'single';
     let renderOpts;
+
+    // Apply side margins gracefully on the container wrapper so column calculations stay exact inside iframe
+    const margin = settings.margin || 60;
+    const sidePadding = Math.round(((100 - margin) / 2) * 0.35); // controlled side padding
+    epubContainer.style.paddingLeft = `${sidePadding}%`;
+    epubContainer.style.paddingRight = `${sidePadding}%`;
 
     if (layout === 'double') {
       renderOpts = { width: '100%', height: '100%', flow: 'paginated', spread: 'always', minSpreadWidth: 0 };
@@ -143,7 +161,7 @@ const Reader = (() => {
 
     // Restore library theme
     App.applyTheme(settings.theme);
-    Library.render();
+    Library.refresh();
   }
 
   /* ── TOC ── */
@@ -186,19 +204,66 @@ const Reader = (() => {
     const ts = getThemeStyles(s.theme);
 
     rendition.themes.default({
-      'html': { background: `${ts.bg} !important` },
-      'body': {
-        background:      `${ts.bg} !important`,
-        color:           `${ts.text} !important`,
-        'font-family':   `"${s.font || 'Lora'}", Georgia, serif !important`,
-        'font-size':     `${s.fontSize || 100}% !important`,
-        'line-height':   `${s.lineHeight || 1.6} !important`,
-        'padding-left':  `${(100-(s.margin||60))/2}% !important`,
-        'padding-right': `${(100-(s.margin||60))/2}% !important`,
-        'max-width':     '100% !important',
+      'html': {
+        'background': `${ts.bg} !important`,
+        'height': '100% !important',
       },
-      'a':   { color: `${ts.link} !important` },
-      'p, div, span, li, h1, h2, h3, h4, h5, h6': { color: `${ts.text} !important` },
+      'body': {
+        'background': `${ts.bg} !important`,
+        'color': `${ts.text} !important`,
+        'font-family': `"${s.font || 'Lora'}", Georgia, serif !important`,
+        'font-size': `${s.fontSize || 100}% !important`,
+        'line-height': `${s.lineHeight || 1.6} !important`,
+        'padding': '20px 28px !important',
+        'margin': '0 !important',
+        'box-sizing': 'border-box !important',
+        'word-wrap': 'break-word !important',
+        'text-rendering': 'optimizeLegibility !important',
+        '-webkit-font-smoothing': 'antialiased !important',
+      },
+      'a': {
+        'color': `${ts.link} !important`,
+        'text-decoration': 'underline !important',
+      },
+      'p': {
+        'color': `${ts.text} !important`,
+        'margin-top': '0.4em !important',
+        'margin-bottom': '0.6em !important',
+        'line-height': `${s.lineHeight || 1.6} !important`,
+        'text-align': 'justify !important',
+        'hyphens': 'auto !important',
+        '-webkit-hyphens': 'auto !important',
+      },
+      'h1, h2, h3, h4, h5, h6': {
+        'color': `${ts.text} !important`,
+        'margin-top': '1.1em !important',
+        'margin-bottom': '0.5em !important',
+        'line-height': '1.3 !important',
+        'page-break-after': 'avoid !important',
+        'break-after': 'avoid !important',
+      },
+      'img, svg, picture, video': {
+        'max-width': '100% !important',
+        'max-height': '82vh !important',
+        'object-fit': 'contain !important',
+        'display': 'block !important',
+        'margin': '1em auto !important',
+        'page-break-inside': 'avoid !important',
+        'break-inside': 'avoid !important',
+      },
+      'blockquote': {
+        'color': `${ts.text} !important`,
+        'margin': '1em 1.5em !important',
+        'padding-left': '1em !important',
+        'border-left': `3px solid ${ts.link} !important`,
+        'opacity': '0.9 !important',
+      },
+      'hr': {
+        'border': 'none !important',
+        'border-top': `1px solid ${ts.text} !important`,
+        'opacity': '0.2 !important',
+        'margin': '2em 0 !important',
+      },
       '.search-highlight-class': {
         'background-color': 'rgba(245, 166, 35, 0.45) !important',
         'border-radius': '2px',
@@ -221,6 +286,7 @@ const Reader = (() => {
 
   function updateSettings(patch) {
     const wasLayout = settings.layout;
+    const wasMargin = settings.margin;
     settings = { ...settings, ...patch };
     Storage.saveSettings(settings);
 
@@ -237,13 +303,26 @@ const Reader = (() => {
       }
     } else {
       // EPUB
-      if (patch.layout && patch.layout !== wasLayout) {
-        createRendition(currentCfi).then(() => {
-          buildToc();
-          updateProgressUI();
-        });
+      const layoutChanged = (patch.layout && patch.layout !== wasLayout);
+      if (layoutChanged || (patch.margin !== undefined && patch.margin !== wasMargin)) {
+        const margin = settings.margin || 60;
+        const sidePadding = Math.round(((100 - margin) / 2) * 0.35);
+        epubContainer.style.paddingLeft = `${sidePadding}%`;
+        epubContainer.style.paddingRight = `${sidePadding}%`;
+      }
+      
+      if (layoutChanged) {
+        // Must recreate the entire rendition to apply structural spread/flow changes
+        createRendition();
       } else {
+        if (rendition && patch.margin !== undefined && patch.margin !== wasMargin) {
+          try { rendition.resize(); } catch (_) {}
+        }
         applyRenditionTheme();
+        if (updateProgressTimeout) clearTimeout(updateProgressTimeout);
+        updateProgressTimeout = setTimeout(() => {
+          updateProgressUI();
+        }, 150);
       }
     }
     refreshSettingsUI();
@@ -301,53 +380,78 @@ const Reader = (() => {
       if (!loc || !loc.start) return;
       currentCfi = loc.start.cfi;
 
-      const locationsLoaded = book.locations && book.locations.length > 0;
-      let displayPct;
+      const spineIndex = loc.start.index;
+      const innerPage = Math.max(1, loc.start.displayed?.page || 1);
 
-      if (locationsLoaded) {
-        const pct = book.locations.percentageFromCfi(currentCfi);
-        if (typeof pct === 'number' && !isNaN(pct) && pct >= 0) {
-          displayPct = Math.round(pct * 100);
+      let totalPages = 1;
+      let currentPage = 1;
+      let displayPct = 0;
+      
+      const locationsArray = (book.locations && book.locations._locations) ? book.locations._locations : [];
+      const hasLocations = locationsArray.length > 0;
+
+      if (hasLocations) {
+        // ── Stable approach: use epub.js location index directly ──
+        // totalPages is computed ONCE and cached so it never changes mid-read.
+        // Each epub.js "location" ≈ 1 chunk of ~1000 chars. We use that count
+        // as the authoritative page total. It is set at import time and never changes.
+        if (cachedTotalPages === null) {
+          cachedTotalPages = locationsArray.length;
         }
-      }
+        totalPages = cachedTotalPages;
 
-      // If locations are not loaded or the percentage calculation failed, use fallback
-      if (displayPct === undefined || isNaN(displayPct)) {
-        const spineIndex = loc.start.index;
+        // locationFromCfi returns a stable 0-based integer index into the locations array.
+        let locIdx = 0;
+        try {
+          const raw = book.locations.locationFromCfi(currentCfi);
+          if (typeof raw === 'number' && !isNaN(raw) && raw >= 0) {
+            locIdx = raw;
+          } else {
+            // Fallback: binary search in the locations array
+            const locsBeforeSpine = locationsBeforeSpine[spineIndex] || 0;
+            const locsInSpine = Math.max(1, locationsPerSpine[spineIndex] || 1);
+            locIdx = Math.round(locsBeforeSpine + (innerPage - 1) / Math.max(1, loc.start.displayed?.total || 1) * locsInSpine);
+          }
+        } catch (_) {}
+
+        // currentPage is 1-based
+        currentPage = Math.max(1, Math.min(totalPages, locIdx + 1));
+
+        const pct = book.locations.percentageFromCfi(currentCfi);
+        displayPct = (typeof pct === 'number' && !isNaN(pct))
+          ? Math.round(pct * 100)
+          : Math.round(((currentPage - 1) / Math.max(1, totalPages - 1)) * 100);
+      } else {
+        // No locations at all (import failed): rough estimate by spine
         const totalSpines = book.spine.length || 1;
-        const innerPage = loc.start.displayed.page || 1;
-        const innerTotal = loc.start.displayed.total || 1;
-        const progressInSpine = innerTotal > 0 ? (innerPage - 1) / innerTotal : 0;
-        displayPct = Math.round(((spineIndex + progressInSpine) / totalSpines) * 100);
+        totalPages = totalSpines * 15;
+        currentPage = Math.floor(spineIndex * 15) + innerPage;
+        displayPct = Math.round(((currentPage - 1) / Math.max(1, totalPages - 1)) * 100);
       }
-
       displayPct = Math.max(0, Math.min(100, displayPct));
 
-      progressBar.style.width     = displayPct + '%';
-      
-      let totalPages;
-      let currentPage;
+      progressBar.style.width = displayPct + '%';
 
-      if (locationsLoaded) {
-        totalPages = book.locations.length;
-        currentPage = Math.max(1, book.locations.locationFromCfi(currentCfi) + 1);
+      if (settings.layout === 'double' && currentPage < totalPages) {
+        const p2 = Math.min(totalPages, currentPage + 1);
+        progressLabel.textContent = `${currentPage}-${p2} / ${totalPages}`;
       } else {
-        totalPages = Math.max(1, book.spine.length * 15);
-        currentPage = Math.max(1, Math.round((displayPct / 100) * totalPages));
+        progressLabel.textContent = `${currentPage} / ${totalPages}`;
       }
-      progressLabel.textContent = `${currentPage} / ${totalPages}`;
 
       const toc     = bookRecord.toc || [];
       const spineHref = loc.start.href;
       const chapter = toc.find(t => spineHref && t.href && spineHref.includes(t.href.split('#')[0]));
-      chapterLabel.textContent  = chapter ? chapter.label : '';
-      locationLabel.textContent = `Page ${loc.start.displayed.page} of ${loc.start.displayed.total} (Chapter)`;
+      chapterLabel.textContent  = '';
+      locationLabel.textContent = chapter ? chapter.label : '';
       if (chapter) highlightTocItem(chapter.href);
 
       await Storage.updateProgress(bookRecord.id, currentCfi, displayPct, chapter?.label);
       bookRecord.progress   = displayPct;
       bookRecord.currentCfi = currentCfi;
-    } catch (_) {}
+    } catch (e) {
+      console.error("Progress update failed:", e);
+    }
   }
 
   /* ── Navigation ── */
@@ -974,11 +1078,37 @@ const Reader = (() => {
       .then(() => {
         bookRecord.locations = book.locations.save();
         Storage.saveBook(bookRecord).catch(() => {});
+        initSpineLocationMapping();
         updateProgressUI();
       })
       .catch(err => {
         console.error("Error generating locations:", err);
       });
+  }
+
+  function initSpineLocationMapping() {
+    if (!book || !book.locations || !book.locations._locations || !book.locations._locations.length) {
+      locationsPerSpine = [];
+      locationsBeforeSpine = [];
+      return;
+    }
+    const spineCount = book.spine.length || 1;
+    locationsPerSpine = new Array(spineCount).fill(0);
+    locationsBeforeSpine = new Array(spineCount).fill(0);
+
+    const locationsArray = book.locations._locations || [];
+    locationsArray.forEach(cfi => {
+      const section = book.spine.get(cfi);
+      if (section && typeof section.index === 'number') {
+        locationsPerSpine[section.index]++;
+      }
+    });
+
+    let cumulative = 0;
+    for (let i = 0; i < spineCount; i++) {
+      locationsBeforeSpine[i] = cumulative;
+      cumulative += locationsPerSpine[i];
+    }
   }
 
   function handleKeyDown(e) {
